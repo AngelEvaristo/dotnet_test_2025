@@ -1,33 +1,27 @@
 pipeline {
   agent any
-
   stages {
-    stage('Checkout') {
-      steps { checkout scm }
-    }
+    stage('Load Remote Pipeline') {
+      steps {
+        // Clona el repo que tiene los pasos de pipeline
+        dir('pipeline-remote') {
+          checkout([
+            $class: 'GitSCM',
+            branches: [[name: '*/main']],
+            userRemoteConfigs: [[
+              url: 'https://github.com/AngelEvaristo/remote_jenkins_2025.git',
+              credentialsId: 'AngelEvaristo'
+            ]]
+          ])
+        }
 
-    stage('Restore') {
-      steps { powershell 'scripts/restore.ps1' }
-    }
-
-    stage('Build') {
-      steps { powershell 'scripts/build.ps1' }
-    }
-
-    stage('Test') {
-      steps { powershell 'scripts/test.ps1' }
-    }
-  }
-
-  post {
-    success {
-      echo 'CI .NET completado correctamente'
-    }
-    failure {
-      echo 'CI fallo. Revisar logs de consola.'
-    }
-    always {
-      archiveArtifacts artifacts: 'TestResults/*.trx', allowEmptyArchive: true
+        // Carga el script remoto y ejecútalo
+        script {
+          def remote = load 'pipeline-remote/pipelines/buildAndTest.groovy'
+          // true = usa scripts del repo del proyecto (sesion1-net-consumer)
+          remote.call('Sesion1 .NET Consumer', true)
+        }
+      }
     }
   }
 }
