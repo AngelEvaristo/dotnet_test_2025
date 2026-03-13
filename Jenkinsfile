@@ -1,24 +1,34 @@
+// Demo pipeline usando la librería compartida
+@Library('shared-lib@main') _
+
+import org.example.Utils
+import org.example.StringTools
+
 pipeline {
   agent any
+  environment {
+    GREETING_PREFIX = 'Hola'
+  }
   stages {
-    stage('Load Remote Pipeline') {
+    stage('Build') {
       steps {
         script {
-          // Checkout repo remoto en el MISMO workspace donde correrá el node
-          dir('pipeline-remote') {
-            checkout([
-              $class: 'GitSCM',
-              branches: [[name: '*/main']],
-              userRemoteConfigs: [[
-                url: 'https://github.com/AngelEvaristo/remote_jenkins_2025.git',
-                credentialsId: 'AngelEvaristo'
-              ]]
-            ])
-          }
+          sayHello('Equipo')
+          greetWithEnv('devs')
+          printBanner('Build')
 
-          def remote = load 'pipeline-remote/pipelines/buildAndTest.groovy'
-          remote.call('Sesion1 .NET Consumer', false) // false para usar scripts remotos
+          def tag = Utils.buildTag(env.BRANCH_NAME ?: 'local', env.BUILD_NUMBER ?: '0')
+          echo "Tag de build: ${tag}"
+
+          def title = StringTools.titleCase('pipeline de ejemplo')
+          echo "Titulo: ${title}"
         }
+      }
+    }
+    stage('Notify') {
+      steps {
+        notifySlack('#dev', "Build ${env.BUILD_NUMBER ?: '0'} OK")
+        renderMessage('Equipo', env.BUILD_NUMBER ?: '0', 'SUCCESS')
       }
     }
   }
